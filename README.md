@@ -22,7 +22,7 @@
 
 1. Подготовил с использованием Packer + Ansible provision образ в YC с установленным Docker.
 2. Развернул инстансы с помощью Terraform, количество задается переменной, используется образ, подготовленный в п. 1. Инстансы доступны через Network Load Balancer.
-3. Запустил котнейнер на всех инстансах при помощи Ansible, хосты выбрал с использованием Dynamic Inventory.
+3. Запустил контейнер на всех инстансах при помощи Ansible, хосты выбрал с использованием Dynamic Inventory.
 
 Все конфигурационные файлы (Packer, Terraform и Ansible) см. [dockermonolith/infra](dockermonolith/infra)
 
