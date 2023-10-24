@@ -1,0 +1,25 @@
+{
+    "builders": [
+        {
+            "type": "yandex",
+            "service_account_key_file": "{{user `service_account_key_file`}}",
+            "folder_id": "{{user `folder_id`}}",
+            "source_image_family": "{{user `source_image_family`}}",
+            "image_name": "{{user `app_name`}}-app-docker-{{timestamp}}",
+            "image_family": "{{user `app_name`}}-app-docker",
+            "ssh_username": "{{user `ssh_username`}}",
+            "platform_id": "standard-v3",
+            "use_ipv4_nat": true
+        }
+    ],
+    "provisioners": [
+        {
+        "type": "ansible",
+        "user": "ubuntu",
+        "ansible_ssh_extra_args": "-o HostkeyAlgorithms=ssh-rsa",
+        "playbook_file": "docker.yml",
+        "ansible_env_vars": [ "ANSIBLE_HOST_KEY_CHECKING=False", "ANSIBLE_PRIVATE_KEY_FILE=~/.ssh/yc" ],
+        "extra_arguments": [ "-vvvv" ]
+        }
+    ]
+}

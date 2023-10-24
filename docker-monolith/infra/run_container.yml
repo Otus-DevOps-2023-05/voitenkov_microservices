@@ -1,0 +1,10 @@
+---
+- name: Run Reddit-app container
+  hosts: app
+  become: true
+  tasks:
+  - name: Container run
+    docker_container:
+      name: reddit
+      image: voitenkov/otus-reddit:1.0
+      network_mode: host
