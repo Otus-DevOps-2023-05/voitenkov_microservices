@@ -100,7 +100,7 @@ fhmate3ubd9j2adpicso.auto.internal : ok=10   changed=1    unreachable=0    faile
 
 ## Как проверить работоспособность:
 ---
-<a name="hw12"></a>
+<a name="hw13"></a>
 # Выполнено ДЗ № 13 - Docker образы. Микросервисы
 
  - [x] Основное ДЗ
