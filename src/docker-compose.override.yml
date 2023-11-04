@@ -1,0 +1,3 @@
+services:
+  ui:
+    command: "puma --debug -w 2"
