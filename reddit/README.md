@@ -1,4 +1,4 @@
-# Monolith application
+# Monolith Application
 
 ## Deploy using Capistrano
 
