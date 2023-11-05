@@ -1,0 +1,40 @@
+---
+- name: Run Gitlab container
+  hosts: gitlab
+  become: true
+  tasks:
+  - name: Container run
+    docker_container:
+      name: gitlab
+      image: gitlab/gitlab-ce:latest
+      restart_policy: always
+      network_mode: bridge
+      hostname: gitlab.example.com
+      env:
+        GITLAB_OMNIBUS_CONFIG: |
+          external_url 'http://158.160.109.65'
+      ports:
+        - '80:80'
+        - '443:443'
+        - '2222:22'
+      volumes:
+        - '/srv/gitlab/config:/etc/gitlab'
+        - '/srv/gitlab/logs:/var/log/gitlab'
+        - '/srv/gitlab/data:/var/opt/gitlab'
+  - name: Get container info
+    community.docker.docker_container_info:
+      name: gitlab
+    register: gitlab_status
+  - name: Print information about container
+    ansible.builtin.debug:
+      var: "{{ gitlab_status.container.State.Health.Status }}"
+    when: gitlab_status.exists
+  - name: Wait for port 80
+    ansible.builtin.wait_for:
+      host: 0.0.0.0
+      port: 80
+      state: present
+      timeout: 300
+  - name: Initial root password
+    become: true
+    command: cat /srv/gitlab/config/initial_root_password
