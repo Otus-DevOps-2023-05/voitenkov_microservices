@@ -84,8 +84,8 @@ module "gitlab-instance" {
   instance_environment          = var.environment
   instance_service_account_name = module.instance-sa.name
   instance_preemptible          = true
-  instance_cores                = 4
-  instance_memory               = 4
+  instance_cores                = 8
+  instance_memory               = 8
   instance_disk_size            = 50
   instance_subnet_id            = yandex_vpc_subnet.subnet-otus-devops-microservices-a1.id
   instance_nat                  = true

@@ -18,12 +18,13 @@ data "template_file" "user_data" {
 }
 
 resource "yandex_compute_instance" "instance" {
-  name               = local.instance_name
-  description        = local.instance_description
-  hostname           = var.instance_name
-  zone               = var.instance_zone
-  platform_id        = var.instance_platform_id
-  service_account_id = data.yandex_iam_service_account.service_account.service_account_id
+  allow_stopping_for_update = true
+  name                      = local.instance_name
+  description               = local.instance_description
+  hostname                  = var.instance_name
+  zone                      = var.instance_zone
+  platform_id               = var.instance_platform_id
+  service_account_id        = data.yandex_iam_service_account.service_account.service_account_id
 
   labels = {
     tags = var.instance_name
