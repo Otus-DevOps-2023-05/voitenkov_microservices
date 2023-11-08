@@ -1,0 +1,6 @@
+# docker-compose.yml
+build_info.txt
+.env
+
+## python specific
+*.pyc
