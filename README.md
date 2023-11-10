@@ -7,6 +7,7 @@
 3. [ДЗ № 14 - Сетевое взаимодействие Docker контейнеров. Docker Compose. Тестирование образов](#hw14)
 4. [ДЗ № 15 - Устройство Gitlab CI. Построение процесса непрерывной интеграции](#hw15)
 5. [ДЗ № 16 - Введение в мониторинг. Модели и принципы работы систем мониторинга](#hw16)
+6. [ДЗ № 18 - Введение в Kubernetes #1](#hw18)
    
 ---
 <a name="hw12"></a>
@@ -468,6 +469,73 @@ Prometheus в окончательном варианте:
 ### Задание с ⭐ Напишите Makefile , который в минимальном варианте умеет билдить и пушить Docker-образы
 
 Makefile см. в [monitoring/Makefile](monitoring/Makefile)
+
+## Как запустить проект:
+
+## Как проверить работоспособность:
+
+---
+<a name="hw18"></a>
+# Выполнено ДЗ № 18 - Введение в Kubernetes #1
+
+ - [x] Основное ДЗ
+ - [x] Задание с ⭐ Опишите установку кластера k8s с помощью terraform и ansible
+
+## В процессе сделано:
+
+1. Разобрал на практике все компоненты Kubernetes, развернуть их вручную используя kubeadm
+2. Ознакомился с описанием основных примитивов нашего приложения и его дальнейшим запуском в Kubernetes
+
+Развернул кластер K8s с использованием **kubeadm**:
+```shell
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --upload-certs --kubernetes-version=v1.28.0 --ignore-preflight-errors=Mem
+sudo kubeadm join 192.168.10.8:6443 --token ij2uef.bi2rn2dyhilz401e --discovery-token-ca-cert-hash sha256:216c05cc3bdc07b39cc6fa245b1ec5388111046a2e70520202503b64e3b9edb3 
+```
+
+Установил CALICO:
+```shell
+export CALICO_IPV4POOL_CIDR=10.244.0.0/16
+wget https://projectcalico.docs.tigera.io/manifests/calico.yaml
+sed -i -r -e 's/^([ ]+)# (- name: CALICO_IPV4POOL_CIDR)$\n/\1\2\n\1  value: "10.244.0.0\/16"/g' calico.yaml
+kubectl apply -f calico.yaml
+```
+
+Кластер работоспособен:
+```shell
+NAME     STATUS   ROLES           AGE     VERSION
+kuber1   Ready    control-plane   18m     v1.28.0
+kuber2   Ready    <none>          6m40s   v1.28.0
+```
+Задеплоил поды:
+```shell
+$ kubectl apply -f reddit
+````
+Приложение устновлено:
+```shell
+$ kubectl get all -A
+NAMESPACE     NAME                                           READY   STATUS    RESTARTS   AGE
+default       pod/comment-7c97c4589f-wbgzt                   1/1     Running   0          5m27s
+default       pod/mongo-58f4cf4c5f-r9hqz                     0/1     Pending   0          5m27s
+default       pod/mongo-5f649fdb6d-thcrp                     0/1     Pending   0          62s
+default       pod/post-76c769dbbd-g4b68                      1/1     Running   0          5m27s
+default       pod/ui-6c584b986c-frlc5                        1/1     Running   0          5m27s
+kube-system   pod/calico-kube-controllers-7ddc4f45bc-sw7d9   1/1     Running   0          11m
+kube-system   pod/calico-node-rb7q5                          1/1     Running   0          11m
+kube-system   pod/calico-node-rck8k                          1/1     Running   0          11m
+kube-system   pod/coredns-5dd5756b68-7xlfl                   1/1     Running   0          28m
+kube-system   pod/coredns-5dd5756b68-hnnd9                   1/1     Running   0          28m
+kube-system   pod/etcd-kuber1                                1/1     Running   0          28m
+kube-system   pod/kube-apiserver-kuber1                      1/1     Running   0          28m
+kube-system   pod/kube-controller-manager-kuber1             1/1     Running   0          28m
+kube-system   pod/kube-proxy-cnxwx                           1/1     Running   0          28m
+kube-system   pod/kube-proxy-p8q45                           1/1     Running   0          16m
+kube-system   pod/kube-scheduler-kuber1                      1/1     Running   0          28m
+```
+
+### Задание с ⭐ Опишите установку кластера k8s с помощью terraform и ansible
+
+Для установки и подготовки виртуалок к устновке Kubernetes использовал Terraform + Userdata файл CloudInit.
+Писать отдельную роль Ansible только для kubeadm init и join не стал. Для этого есть уже **Kubespray**.
 
 ## Как запустить проект:
 
