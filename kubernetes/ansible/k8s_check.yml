@@ -1,0 +1,43 @@
+---
+- name: Run checks on k8s
+  hosts: masters
+  vars:
+    ssh_user: ubuntu
+  become: false
+  gather_facts: false
+  remote_user: "{{ ssh_user }}"
+  tasks:
+    - name: Get nodes
+      shell: kubectl get nodes
+      register: nodes_status
+
+    - debug:
+        msg: |
+          {% for item in nodes_status.stdout_lines -%}
+          {{ item }}
+          {% endfor %}
+
+    - name: Waiting for pods to finish start
+      ansible.builtin.pause:
+        minutes: 2
+
+    - name: Get pods
+      shell: kubectl get pods --all-namespaces -o wide
+      register: pods_status
+
+    - debug:
+        msg: |
+          {% for item in pods_status.stdout_lines -%}
+          {{ item }}
+          {% endfor %}
+
+    - name: Check cluster
+      command: "{{ item }}"
+      register: cluster_status
+      with_items:
+        - kubectl config view
+        - kubectl describe node
+
+    - debug:
+        msg: "{{ item.stdout_lines | join('\n') }}"
+      with_items: "{{ cluster_status.results }}"
