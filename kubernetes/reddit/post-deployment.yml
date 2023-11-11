@@ -7,7 +7,7 @@ metadata:
     app: reddit
     component: post
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: reddit
@@ -22,8 +22,6 @@ spec:
       containers:
       - image: voitenkov/post
         name: post
-        ports:
-        - containerPort: 5000
         env:
         - name: POST_DATABASE_HOST
           value: post-db
