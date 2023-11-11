@@ -1,0 +1,9 @@
+---
+- name: Install k8s based image
+  hosts: all, masters, workers
+  remote_user: "{{ ssh_user }}"
+  become: true
+  gather_facts: false
+  roles:
+    - docker
+    - kubernetes
