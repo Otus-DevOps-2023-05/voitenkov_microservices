@@ -547,15 +547,25 @@ kube-system   pod/kube-scheduler-kuber1                      1/1     Running   0
 # Выполнено ДЗ № 19 - Основные модели безопасности и контроллеры в Kubernetes
 
  - [x] Основное ДЗ
- - [x] Задание с ⭐
+ - [x] Задание с ⭐ Разверните Kubernetes-кластер в Yandex cloud с помощью Terraform
+ - [x] Задание с ⭐ Создайте YAML-манифесты для описания созданных сущностей для включения dashboard
        
 ## В процессе сделано:
 
+1. Развернул локальное окружение для работы с Kubernetes (Minikube)
+2. Развернул Kubernetes в Yandex Cloud
+3. Запустил Reddit в Kubernetes
 
+Приложение успешно запустилось в Yandex Cloud Managed Kubernetes:
+![Reddit in K8s](/images/hw19-reddit.png) 
 
-### Задание с ⭐ 
+### Задание с ⭐ Разверните Kubernetes-кластер в Yandex cloud с помощью Terraform
 
+Давно уже в YC все разворачиваю исключительно Терраформом.  см. в [kubernetes/infra](kubernetes/infra)
 
+### Задание с ⭐ Создайте YAML-манифесты для описания созданных сущностей для включения dashboard
+
+Манифесты для Dashbord см. [kubernetes/dashboard](kubernetes/dashboard)
 
 ## Как запустить проект:
 
