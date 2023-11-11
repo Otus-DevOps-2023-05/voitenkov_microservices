@@ -2,12 +2,12 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: post-deployment
+  name: post
   labels:
-    app: post
+    app: reddit
     component: post
 spec:
-  replicas: 1
+  replicas: 3
   selector:
     matchLabels:
       app: reddit
@@ -20,12 +20,10 @@ spec:
         component: post
     spec:
       containers:
-      - name: post
-        image: voitenkov/post
-        resources:
-          limits:
-            memory: 512Mi
-            cpu: "1"
+      - image: voitenkov/post
+        name: post
+        ports:
+        - containerPort: 5000
         env:
         - name: POST_DATABASE_HOST
-          value: mongo
+          value: post-db        
