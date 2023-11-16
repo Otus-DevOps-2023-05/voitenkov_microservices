@@ -1,0 +1,146 @@
+---
+- name: Install K8s master base image
+  hosts: masters
+  vars:
+    ssh_user: ubuntu
+    pod_network_cidr: 10.244.0.0/16
+    kubernetes_flannel_manifest_file: https://raw.githubusercontent.com/flannel-io/flannel/master/Documentation/kube-flannel.yml
+    kubernetes_calico_manifest_file: https://projectcalico.docs.tigera.io/manifests/calico.yaml
+  become: true
+  gather_facts: false
+  remote_user: "{{ ssh_user }}"
+  tasks:
+    - name: Create an empty file for Kubeadm configuring
+      copy:
+        content: ""
+        dest: /etc/kubernetes/kubeadm-config.yaml
+        force: no
+
+    - name: Configuring the container runtime including its cgroup driver
+      blockinfile:
+        path: /etc/kubernetes/kubeadm-config.yaml
+        block: |
+          kind: ClusterConfiguration
+          apiVersion: kubeadm.k8s.io/v1beta3
+          networking:
+            podSubnet: "{{ pod_network_cidr }}"
+          controlPlaneEndpoint: "{{ hostvars[inventory_hostname].ansible_host }}"
+          apiServer:
+            certSANs:
+              - "{{ hostvars[inventory_hostname].ansible_host }}"
+          ---
+          kind: KubeletConfiguration
+          apiVersion: kubelet.config.k8s.io/v1beta1
+          runtimeRequestTimeout: "15m"
+          cgroupDriver: "systemd"
+          systemReserved:
+            cpu: 100m
+            memory: 350M
+          kubeReserved:
+            cpu: 100m
+            memory: 50M
+          enforceNodeAllocatable:
+            - pods
+
+    - name: Initialize the cluster
+      shell: kubeadm init --config /etc/kubernetes/kubeadm-config.yaml  >> cluster_initialized.log # --apiserver-cert-extra-sans={{ hostvars[inventory_hostname].ansible_host }} --control-plane-endpoint={{ hostvars[inventory_hostname].ansible_host }} --pod-network-cidr=10.244.0.0/16
+      args:
+        chdir: /home/{{ ssh_user }}
+        creates: cluster_initialized.log
+
+    - name: Create .kube directory
+      file:
+        path: /home/{{ ssh_user }}/.kube
+        state: directory
+        owner: "{{ ssh_user }}"
+        group: "{{ ssh_user }}"
+        mode: 0755
+
+    - name: Copy admin.conf to user's kube config
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/{{ ssh_user }}/.kube/config
+        remote_src: true
+        owner: "{{ ssh_user }}"
+      register: kube_config
+
+    - name: Get the Calico manifest file
+      ansible.builtin.get_url:
+        url: "{{ kubernetes_calico_manifest_file }}"
+        dest: /home/{{ ssh_user }}
+        owner: "{{ ssh_user }}"
+        group: "{{ ssh_user }}"
+        mode: '0640'
+
+    - name: Modify the file calico.yaml
+      ansible.builtin.replace:
+        path: calico.yaml
+        regexp: '^([ ]+)# (- name: CALICO_IPV4POOL_CIDR)\n^.*$'
+        replace: '\1\2\n\1  value: "{{ pod_network_cidr }}"'
+        backup: yes
+      register: calico_config
+
+    - debug:
+        msg: "{{ calico_config }}"
+
+    - name: Apply Pods plugins
+      become: false
+      environment:
+        CALICO_IPV4POOL_CIDR: 10.244.0.0/16
+      shell: "{{ item }} >> pods_setup.log"
+      args:
+        chdir: /home/{{ ssh_user }}
+      with_items:
+        - kubectl apply -f {{ kubernetes_flannel_manifest_file }}
+        # - kubectl apply -f {{ kubernetes_calico_manifest_file }}
+        - kubectl apply -f calico.yaml
+      register: pods_status
+
+    - debug:
+        msg: "{{ item.stdout_lines | join('\n') }}"
+      with_items: "{{ pods_status.results }}"
+
+    - name: Get token
+      run_once: true
+      shell: kubeadm token create --print-join-command
+      register: join_command_raw
+
+    - debug:
+        msg:
+          - "{{ join_command_raw.stdout }}"
+
+    - name: Set join command
+      set_fact:
+        join_command: "{{ join_command_raw.stdout_lines[0] }}"
+      delegate_to: "{{ item }}"
+      delegate_facts: true
+      with_items: "{{ groups['workers'] }}"
+
+- name: Configure K8s workers base image
+  hosts: workers
+  vars:
+    ssh_user: ubuntu
+  gather_facts: false
+  become: true
+  tasks:
+    - debug:
+        msg:
+          - "The master host IP is {{ hostvars[groups.masters.0].ansible_host }}"
+          - "{{ join_command }}"
+
+    - name: TCP port 6443 on master is reachable from worker
+      wait_for: "host={{ hostvars[groups.masters.0].ansible_host }} port=6443 timeout=3"
+      when: join_command|length > 0
+
+    - fail: msg="Bailing out. This task requires 'master' host to proceed"
+      when: join_command is undefined
+
+    - name: Join cluster
+      shell: "{{ join_command }} >> node_joined.log"
+      args:
+        chdir: /home/{{ ssh_user }}
+        creates: node_joined.log
+      register: join_cluster
+
+    - debug:
+        msg: "{{ join_cluster.stdout }}"
