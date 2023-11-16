@@ -1,5 +1,6 @@
 locals {
   cidr_internet = "0.0.0.0/0" # All IPv4 addresses.
+  cidr_local    = "10.1.0.0/16"
 }
 
 resource "yandex_vpc_network" "network-otus-devops-prod" {
@@ -11,7 +12,7 @@ module "a1-subnet" {
   subnet_name                 = "subnet-${var.project}-${var.environment}-a1"
   subnet_network_id           = yandex_vpc_network.network-otus-devops-prod.id
   subnet_zone                 = "ru-central1-a"
-  subnet_v4_cidr_blocks       = ["192.168.10.0/24"]
+  subnet_v4_cidr_blocks       = local.cidr_local
 
   depends_on = [yandex_vpc_network.network-otus-devops-prod]
 }
@@ -34,13 +35,6 @@ resource "yandex_vpc_security_group" "sg-otus-devops-prod-k8s-main" {
     predefined_target = "self_security_group"
     from_port         = 0
     to_port           = 65535
-  }
-  ingress {
-    protocol       = "ANY"
-    description    = "Правило разрешает взаимодействие под-под и сервис-сервис. Укажите подсети вашего кластера и сервисов."
-    v4_cidr_blocks = ["10.96.0.0/16", "10.112.0.0/16"]
-    from_port      = 0
-    to_port        = 65535
   }
   ingress {
     protocol       = "ICMP"
@@ -145,7 +139,7 @@ module "k8s-node-group-sa" {
   sa_role          = "container-registry.images.puller"
 }
 
-module "c1-k8s-cluster" {
+module "c1-k8s-cluster-calico" {
   source                                = "../modules/k8s-cluster"
   k8s_cluster_name                      = "cluster-1"
   k8s_cluster_project                   = var.project
@@ -201,4 +195,21 @@ module "default-pool-k8s-node-group" {
     yandex_vpc_security_group.sg-otus-devops-prod-k8s-nodes-ssh-access,
     yandex_vpc_security_group.sg-otus-devops-prod-k8s-public-services,
   ]
+}
+
+resource "yandex_dns_zone" "z1-dns-zone-otus-devops" {
+  name        = "dns-zone-${var.project}-1"
+  description = "DNS zone for ${var.domain1} domain"
+  zone        = "${var.domain1}."
+  public      = true
+}
+
+resource "yandex_dns_recordset" "r1-dns-rs-otus-devops-prod" {
+  zone_id = yandex_dns_zone.z1-dns-zone-otus-devops.id
+  name    = "*.${var.subdomain1_1}.${var.domain1}."
+  type    = "A"
+  ttl     = 600
+  data    = ["${var.external_ip1}"]
+
+  depends_on = [yandex_dns_zone.z1-dns-zone-otus-devops]
 }

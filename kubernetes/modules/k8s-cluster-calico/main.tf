@@ -34,4 +34,6 @@ resource "yandex_kubernetes_cluster" "k8s-cluster" {
   node_service_account_id = data.yandex_iam_service_account.node_service_account.service_account_id
   cluster_ipv4_range      = var.k8s_cluster_cluster_ipv4_range
   service_ipv4_range      = var.k8s_cluster_service_ipv4_range
+  network_policy_provider = "CALICO"
+
 }
