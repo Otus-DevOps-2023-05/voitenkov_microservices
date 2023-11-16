@@ -1,0 +1,23 @@
+REPOSITORY                     TAG                                IMAGE ID       CREATED        SIZE
+kube-iptables-tailer           v0.1.0                             52b58985c629   9 days ago     50.5MB
+<none>                         <none>                             ea5e2b0f5d8a   9 days ago     1.07GB
+alpine                         latest                             8ca4688f4f35   2 weeks ago    7.34MB
+voitenkov/k8s-mysql-operator   0.0.8                              93e2505fb3fe   5 weeks ago    1.05GB
+voitenkov/k8s-mysql-operator   latest                             93e2505fb3fe   5 weeks ago    1.05GB
+voitenkov/k8s-mysql-operator   0.0.7                              018e088b507b   5 weeks ago    1.05GB
+voitenkov/k8s-mysql-operator   0.0.6                              45a89d352495   5 weeks ago    1.05GB
+voitenkov/k8s-mysql-operator   0.0.5                              59cfca21b131   5 weeks ago    1.05GB
+voitenkov/k8s-mysql-operator   0.0.4                              ceed383e6cb4   5 weeks ago    1.05GB
+python                         3.7                                513ca0003f15   2 months ago   994MB
+gcr.io/k8s-minikube/kicbase    v0.0.39                            67a4b1138d2d   6 months ago   1.05GB
+golang                         1.15                               40349a2425ef   2 years ago    840MB
+hashicorp/packer               1.6.4                              e86103eea021   3 years ago    181MB
+
+Образ - базовый образ плюс совокупность дополнительных слоев, созданных при сборке образа с использованием Dockerfile.
+Исходный образ при запуске контейнера не изменяется, но на его основе формируется файловая система контейнера.
+Хранится на диске или в репозитории.
+docker inspect выводит список слоев с их идентификаторами (hash)
+
+Контейнер создается из образа, содержит все слои образа, из которого он построен плюс новый слой, изменяемыей процессами, запущенными в контейнере.
+Контейнер может быть запущен, остановлен. Во время запуска контейнера в нем запускаются процессы, процессы изменяют слой исполнения.
+docker inspect также показывает много дополнительной информации, хранящейся в контейнере: статус контейнера, сетевые настройки, запущенные процессы, прочая конфигурация среды контейнера.

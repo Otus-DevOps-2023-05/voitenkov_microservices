@@ -1,0 +1,100 @@
+version: '3.3'
+services:
+  mongo_db:
+    container_name: mongodb
+    image: mongo:${MONGO_VERSION}
+    volumes:
+      - mongo_db:/data/db
+    networks:
+      - back_net
+  ui:
+    container_name: ui
+    image: ${USERNAME}/ui:latest
+    ports:
+      - ${REDDIT_PORT}:9292/tcp
+    networks:
+      - front_net
+    depends_on:
+      - post
+      - comment
+  post:
+    container_name: post
+    image: ${USERNAME}/post:latest
+    networks:
+      - front_net
+      - back_net
+    depends_on:
+      - mongo_db
+  comment:
+    container_name: comment
+    image: ${USERNAME}/comment:latest
+    networks:
+      - front_net
+      - back_net
+    depends_on:
+      - mongo_db
+
+  prometheus:
+    container_name: prometheus
+    image: ${USERNAME}/prometheus:latest
+    ports:
+      - '9090:9090'
+    volumes:
+      - prometheus_data:/prometheus
+    command: # Передаем доп параметры в командной строке
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention=1d' # Задаем время хранения метрик в 1 день
+    networks:
+      - front_net
+      - back_net
+
+  node-exporter:
+    container_name: node-exporter
+    image: prom/node-exporter:v0.15.2
+    user: root
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points="^/(sys|proc|dev|host|etc)($$|/)"'
+    networks:
+      - front_net
+      - back_net
+
+  mongodb-exporter:
+    container_name: mongodb-exporter
+    image: percona/mongodb_exporter:0.30.0
+    ports:
+      - '9216:9216'
+    command:
+      - '--mongodb.uri=mongodb://mongo_db:27017'
+      - '--compatible-mode'
+      - '--mongodb.direct-connect=true'
+    networks:
+      - front_net
+      - back_net
+    depends_on:
+      - mongo_db
+
+  blackbox-exporter:
+    container_name: blackbox-exporter
+    image: ${USERNAME}/blackbox-exporter:latest
+    ports:
+      - '9115:9115/tcp'
+    networks:
+      - back_net
+      - front_net
+
+volumes:
+  mongo_db:
+  prometheus_data:
+
+networks:
+  back_net:
+#    name: back_net
+  front_net:
+#    name: front_net

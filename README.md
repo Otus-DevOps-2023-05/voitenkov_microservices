@@ -6,6 +6,7 @@
 2. [ДЗ № 13 - Docker образы. Микросервисы](#hw13) 
 3. [ДЗ № 14 - Сетевое взаимодействие Docker контейнеров. Docker Compose. Тестирование образов](#hw14)
 4. [ДЗ № 15 - Устройство Gitlab CI. Построение процесса непрерывной интеграции](#hw15)
+5. [ДЗ № 16 - Введение в мониторинг. Модели и принципы работы систем мониторинга](#hw16)
    
 ---
 <a name="hw12"></a>
@@ -351,5 +352,127 @@ GitLab Runner уже установлен через userdata Cloud-init Terrafo
 ## Как запустить проект:
 
 ## Как проверить работоспособность:
+
+---
+<a name="hw16"></a>
+# Выполнено ДЗ № 16 - Введение в мониторинг. Модели и принципы работы систем мониторинга
+
+ - [x] Основное ДЗ
+ - [x] Задание с ⭐ Добавьте в Prometheus мониторинг MongoDB с использованием необходимого экспортера
+ - [x] Задание с ⭐ Добавьте в Prometheus мониторинг сервисов comment, post, ui с помощью **blackbox-exporter**
+ - [x] Задание с ⭐ Напишите Makefile , который в минимальном варианте умеет билдить и пушить Docker-образы
+
+## В процессе сделано:
+
+1. Prometheus: запуск, конфигурация, знакомство с Web UI
+2. Мониторинг состояния микросервисов
+3. Сбор метрик хоста с использованием экспортера
+
+Ссылка реджистри с собранными образами: [https://hub.docker.com/u/voitenkov](https://hub.docker.com/u/voitenkov)
+
+### Задание с ⭐ Добавьте в Prometheus мониторинг MongoDB с использованием необходимого экспортера
+
+Добавляем новый сервис:
+```shell
+  mongodb-exporter:
+    container_name: mongodb-exporter
+    image: percona/mongodb_exporter:0.30.0
+    ports:
+      - '9216:9216'
+    command:
+      - '--mongodb.uri=mongodb://mongo_db:27017'
+      - '--compatible-mode'
+      - '--mongodb.direct-connect=true'
+    networks:
+      - front_net
+      - back_net
+    depends_on:
+      - mongo_db
+```
+
+### Задание с ⭐ Добавьте в Prometheus мониторинг сервисов comment, post, ui с помощью **blackbox-exporter**
+
+Собираем образ с конфигом: 
+```shell
+modules:
+  http_2xx:
+    prober: http
+    timeout: 5s
+    http:
+      valid_http_versions: ["HTTP/1.1", "HTTP/2.0"]
+      valid_status_codes: []
+      method: GET
+      follow_redirects: false
+```
+Добавляем новые таргеты в конфиг promethetus и его тоже пересобираем:
+```shell
+  - job_name: 'blackbox'
+    metrics_path: /metrics
+    params:
+      module: [http_2xx]
+    static_configs:
+      - targets:
+        - http://ui:9292
+        - http://comment:9292
+        - http://post:9292
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: blackbox-exporter:9115
+```
+и добавляем новый сервис:
+```shell
+  blackbox-exporter:
+    container_name: blackbox-exporter
+    image: ${USERNAME}/blackbox-exporter:latest
+    ports:
+      - '9115:9115/tcp'
+    networks:
+      - back_net
+      - front_net
+```
+
+В результате получаем:
+```shell
+$ docker compose up -d
+[+] Running 10/10
+ ✔ Network front_net            Created                                                                                                                                                                     0.1s
+ ✔ Network back_net             Created                                                                                                                                                                     0.1s
+ ✔ Container blackbox-exporter  Started                                                                                                                                                                     1.9s
+ ✔ Container mongodb            Started                                                                                                                                                                     1.5s
+ ✔ Container node-exporter      Started                                                                                                                                                                     1.9s
+ ✔ Container prometheus         Started                                                                                                                                                                     2.1s
+ ✔ Container comment            Started                                                                                                                                                                     3.4s
+ ✔ Container mongodb-exporter   Started                                                                                                                                                                     3.3s
+ ✔ Container post               Started                                                                                                                                                                     3.3s
+ ✔ Container ui                 Started                                                                                                                                                                     3.8s
+$ docker ps
+CONTAINER ID   IMAGE                                COMMAND                  CREATED         STATUS         PORTS                                       NAMES
+2ba9f1010c8b   voitenkov/ui:latest                  "puma"                   8 seconds ago   Up 4 seconds   0.0.0.0:9292->9292/tcp, :::9292->9292/tcp   ui
+3bf89aec50d8   voitenkov/post:latest                "python3 post_app.py"    8 seconds ago   Up 5 seconds                                               post
+9a6c066785c6   voitenkov/comment:latest             "puma"                   8 seconds ago   Up 5 seconds                                               comment
+b5ca54b1b09a   percona/mongodb_exporter:0.30.0      "/mongodb_exporter -…"   8 seconds ago   Up 5 seconds   0.0.0.0:9216->9216/tcp, :::9216->9216/tcp   mongodb-exporter
+a687a7fcdc55   voitenkov/blackbox-exporter:latest   "/bin/blackbox_expor…"   8 seconds ago   Up 6 seconds   0.0.0.0:9115->9115/tcp, :::9115->9115/tcp   blackbox-exporter
+5a5003218409   prom/node-exporter:v0.15.2           "/bin/node_exporter …"   8 seconds ago   Up 6 seconds   9100/tcp                                    node-exporter
+c805ecfd14fb   voitenkov/prometheus:latest          "/bin/prometheus --c…"   8 seconds ago   Up 6 seconds   0.0.0.0:9090->9090/tcp, :::9090->9090/tcp   prometheus
+4a9771672a61   mongo:3.2                            "docker-entrypoint.s…"   8 seconds ago   Up 7 seconds   27017/tcp                                   mongodb
+```
+Prometheus в окончательном варианте:
+
+![Prometheus](/images/hw22-prometheus.png) 
+
+
+### Задание с ⭐ Напишите Makefile , который в минимальном варианте умеет билдить и пушить Docker-образы
+
+Makefile см. в [monitoring/Makefile](monitoring/Makefile)
+
+## Как запустить проект:
+
+## Как проверить работоспособность:
+
+
 ## PR checklist:
  - [x] Выставлен label с темой домашнего задания

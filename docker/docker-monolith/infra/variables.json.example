@@ -1,0 +1,8 @@
+{
+  "service_account_key_file": "packer/files/key.json",
+  "folder_id": "b1xxxxxxxxxxxxxxx1r",
+  "source_image_id": "fdxxxxxxxxxxxxxx4a7",
+  "source_image_family": "ubuntu-1604-lts",
+  "app_name": "reddit",
+  "ssh_username": "ubuntu"
+  }
