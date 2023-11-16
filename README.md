@@ -624,7 +624,8 @@ replicaset.apps/ui-7d6fbbfc78        3         3         3       5m59s
   - PersistentVolumeClaims
 2. Потренировался с сетевыми политиками CALICO
 
-Запущенное через Ingress приложениеЖ
+Запущенное через Ingress приложение:
+
 ![Reddit in K8s](/images/hw20-reddit.png) 
 
 ### Задание с ⭐ Опишите создаваемый объект Secret в виде Kubernetes-манифеста.    
