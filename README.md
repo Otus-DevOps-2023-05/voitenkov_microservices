@@ -5,6 +5,7 @@
 1. [ДЗ № 12 - Docker контейнеры. Docker под капотом](#hw12)
 2. [ДЗ № 13 - Docker образы. Микросервисы](#hw13) 
 3. [ДЗ № 14 - Сетевое взаимодействие Docker контейнеров. Docker Compose. Тестирование образов](#hw14)
+4. [ДЗ № 15 - Устройство Gitlab CI. Построение процесса непрерывной интеграции](#hw15)
    
 ---
 <a name="hw12"></a>
@@ -246,5 +247,109 @@ src-comment-1  | * Listening on tcp://0.0.0.0:9292
 
 ## Как проверить работоспособность:
 
+---
+<a name="hw15"></a>
+# Выполнено ДЗ № 15 - Устройство Gitlab CI. Построение процесса непрерывной интеграции
+
+ - [x] Основное ДЗ
+ - [x] Задание с ⭐ Автоматизация развёртывания GitLab (по желанию)
+ - [x] Задание с ⭐ Запуск reddit в контейнере (по желанию)
+ - [x] Задание с ⭐ Автоматизация развёртывания GitLab Runner (по желанию)
+ - [ ] Задание с ⭐ Настройка оповещений в Slack (по желанию)
+
+## В процессе сделано:
+
+1. Подготовил инсталляцию Gitlab CI CE
+2. Подготовил репозиторий с кодом приложения
+3. Описал для приложения этапы пайплайна
+4. Определил окружения, включая динамические
+
+### Задание с ⭐ Автоматизация развёртывания GitLab (по желанию)
+
+Docker установил через userdata Cloud-init Terraform'ом.
+Gitlab запустил с использованием модуля Ansible docker_container, см: (gitlab-ci/infra/run_container.yml)[gitlab-ci/infra/run_container.yml].
+
+Результат:
+```shell
+$ ansible-playbook run_container.yml
+
+PLAY [Run Gitlab container] *************************************************************************************************************************************************************************************
+
+TASK [Gathering Facts] ******************************************************************************************************************************************************************************************
+ok: [gitlab.ru-central1.internal]
+
+TASK [Container run] ********************************************************************************************************************************************************************************************
+--- before
++++ after
+@@ -1,4 +1,4 @@
+ {
+-    "exists": false,
+-    "running": false
++    "exists": true,
++    "running": true
+ }
+
+changed: [gitlab.ru-central1.internal]
+
+PLAY RECAP ******************************************************************************************************************************************************************************************************
+gitlab.ru-central1.internal : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+```
+
+### Задание с ⭐ Запуск reddit в контейнере (по желанию)
+
+Доработал build_job:
+```shell
+build_job:
+  stage: build
+  image: docker:20.10.12-dind-rootless
+  before_script:
+    - until docker info; do sleep 1; done
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - cd reddit
+    - >
+      docker build
+      --tag $CI_REGISTRY_IMAGE/reddit-app:0.0.$CI_PIPELINE_IID
+      --tag $CI_REGISTRY_IMAGE/reddit-app:latest
+      .
+    - docker push $CI_REGISTRY_IMAGE/reddit-app:0.0.$CI_PIPELINE_IID
+    - docker push $CI_REGISTRY_IMAGE/reddit-app:latest
+```
+и branch_review задание: 
+```shell
+branch_review:
+  stage: review
+  image: alpine:3.15.0
+  environment:
+    name: branch/$CI_COMMIT_REF_NAME
+    url: http://$CI_ENVIRONMENT_SLUG.example.com
+  only:
+    - branches
+  except:
+    - main
+  before_script:
+    - apk add openssh-client bash
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+  script:
+    - ssh ${DEV_USER}@${DEV_HOST}
+      "setsid /bin/bash -s " < ./reddit/deploy.sh
+```
+
+### Задание с ⭐ Автоматизация развёртывания GitLab Runner (по желанию)
+
+GitLab Runner уже установлен через userdata Cloud-init Terraform'ом.
+
+### Задание с ⭐ Настройка оповещений в Slack (по желанию)
+
+Слака на курсе и в РФ нет, интегрироваться не с чем. Когда был доступен, дергал web-hook прямо из пайплайна.
+
+## Как запустить проект:
+
+## Как проверить работоспособность:
 ## PR checklist:
  - [x] Выставлен label с темой домашнего задания
