@@ -8,6 +8,7 @@
 4. [ДЗ № 15 - Устройство Gitlab CI. Построение процесса непрерывной интеграции](#hw15)
 5. [ДЗ № 16 - Введение в мониторинг. Модели и принципы работы систем мониторинга](#hw16)
 6. [ДЗ № 18 - Введение в Kubernetes #1](#hw18)
+7. [ДЗ № 19 - Основные модели безопасности и контроллеры в Kubernetes](#hw19)
    
 ---
 <a name="hw12"></a>
@@ -541,6 +542,66 @@ kube-system   pod/kube-scheduler-kuber1                      1/1     Running   0
 
 ## Как проверить работоспособность:
 
+---
+<a name="hw19"></a>
+# Выполнено ДЗ № 19 - Основные модели безопасности и контроллеры в Kubernetes
+
+ - [x] Основное ДЗ
+ - [x] Задание с ⭐ Разверните Kubernetes-кластер в Yandex cloud с помощью Terraform
+ - [x] Задание с ⭐ Создайте YAML-манифесты для описания созданных сущностей для включения dashboard
+       
+## В процессе сделано:
+
+1. Развернул локальное окружение для работы с Kubernetes (Minikube)
+2. Развернул Kubernetes в Yandex Cloud
+3. Запустил Reddit в Kubernetes
+
+Приложение успешно запустилось в Yandex Cloud Managed Kubernetes:
+
+```shell
+$ k get all -n dev
+NAME                           READY   STATUS    RESTARTS   AGE
+pod/comment-858c5c7d76-z82pt   1/1     Running   0          5m43s
+pod/mongo-f474f9d56-mm4kg      1/1     Running   0          6m1s
+pod/post-67856b8bd6-bw4rc      1/1     Running   0          6m
+pod/ui-7d6fbbfc78-4rzcz        1/1     Running   0          5m59s
+pod/ui-7d6fbbfc78-cbnv6        1/1     Running   0          5m59s
+pod/ui-7d6fbbfc78-n4z6j        1/1     Running   0          5m59s
+
+NAME                 TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)        AGE
+service/comment      ClusterIP   10.112.227.255   <none>        9292/TCP       5m43s
+service/comment-db   ClusterIP   10.112.136.108   <none>        27017/TCP      5m43s
+service/mongodb      ClusterIP   10.112.143.229   <none>        27017/TCP      6m
+service/post         ClusterIP   10.112.226.109   <none>        5000/TCP       6m
+service/post-db      ClusterIP   10.112.216.77    <none>        27017/TCP      6m
+service/ui           NodePort    10.112.168.1     <none>        80:32092/TCP   5m59s
+
+NAME                      READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/comment   1/1     1            1           5m43s
+deployment.apps/mongo     1/1     1            1           6m1s
+deployment.apps/post      1/1     1            1           6m
+deployment.apps/ui        3/3     3            3           5m59s
+
+NAME                                 DESIRED   CURRENT   READY   AGE
+replicaset.apps/comment-858c5c7d76   1         1         1       5m43s
+replicaset.apps/mongo-f474f9d56      1         1         1       6m1s
+replicaset.apps/post-67856b8bd6      1         1         1       6m
+replicaset.apps/ui-7d6fbbfc78        3         3         3       5m59s
+```
+
+![Reddit in K8s](/images/hw19-reddit.png) 
+
+### Задание с ⭐ Разверните Kubernetes-кластер в Yandex cloud с помощью Terraform
+
+Давно уже в YC все разворачиваю исключительно Терраформом.  см. в [kubernetes/infra](kubernetes/infra)
+
+### Задание с ⭐ Создайте YAML-манифесты для описания созданных сущностей для включения dashboard
+
+Манифесты для Dashbord см. [kubernetes/dashboard](kubernetes/dashboard)
+
+## Как запустить проект:
+
+## Как проверить работоспособность:
 
 ## PR checklist:
  - [x] Выставлен label с темой домашнего задания
