@@ -4,7 +4,8 @@
 <a name="top"></a>  
 1. [ДЗ № 12 - Docker контейнеры. Docker под капотом](#hw12)
 2. [ДЗ № 13 - Docker образы. Микросервисы](#hw13) 
-
+3. [ДЗ № 14 - Сетевое взаимодействие Docker контейнеров. Docker Compose. Тестирование образов](#hw14)
+   
 ---
 <a name="hw12"></a>
 # Выполнено ДЗ № 12 - Docker контейнеры. Docker под капотом
@@ -163,6 +164,83 @@ ruby                          2.2             6c8e6f9667b2   5 years ago        
 ruby                          2.2.10-alpine   d212148e08f7   5 years ago          107MB
 python                        3.6.0-alpine    cb178ebbf0f2   6 years ago          88.6MB
 ```
+
+## Как запустить проект:
+
+## Как проверить работоспособность:
+
+---
+<a name="hw14"></a>
+# Выполнено ДЗ № 14 - Сетевое взаимодействие Docker контейнеров. Docker Compose. Тестирование образов
+
+ - [x] Основное ДЗ
+ - [x] Задание с ⭐ Создайте docker-compose.override.yml для reddit проекта
+
+## В процессе сделано:
+
+1. Потренировался с настройкой сетевого взаимодействия контейнеров в Docker
+2. Вспомнил как работать с Docker Compose
+
+### Сетевое взамодействие контейнеров
+
+```shell
+docker run -ti --rm --network host joffotron/docker-net-tools -c ifconfig
+
+
+$ docker ps
+CONTAINER ID   IMAGE     COMMAND                  CREATED              STATUS              PORTS     NAMES
+1194e2760984   nginx     "/docker-entrypoint.…"   About a minute ago   Up About a minute             interesting_snyder
+
+$ docker run --network host -d nginx
+1aad755a8132ac15343b82352dd5ea7caeb0dce6e033640583322a8f653ed898
+
+$ docker ps
+CONTAINER ID   IMAGE     COMMAND                  CREATED         STATUS         PORTS     NAMES
+1aad755a8132   nginx     "/docker-entrypoint.…"   2 seconds ago   Up 2 seconds             amazing_chebyshev
+1194e2760984   nginx     "/docker-entrypoint.…"   2 minutes ago   Up 2 minutes             interesting_snyder
+
+$ docker run --network host -d nginx
+6110444caf0b6a0ee7af345a5c69fefee4086ef16536bca67f1841709e57e85b
+
+$ docker ps
+CONTAINER ID   IMAGE     COMMAND                  CREATED         STATUS         PORTS     NAMES
+6110444caf0b   nginx     "/docker-entrypoint.…"   2 seconds ago   Up 1 second              xenodochial_benz
+1194e2760984   nginx     "/docker-entrypoint.…"   2 minutes ago   Up 2 minutes             interesting_snyder
+
+$ docker ps
+CONTAINER ID   IMAGE     COMMAND                  CREATED         STATUS         PORTS     NAMES
+1194e2760984   nginx     "/docker-entrypoint.…"   2 minutes ago   Up 2 minutes             interesting_snyder
+```
+Видно, что следующие контейнеры не могут запуститься, так как пытаются "сесть" на один и тот же порт.
+   
+### Docker-compose
+
+Задание: узнайте как образуется базовое имя проекта. Можно ли его задать? Если можно то как?
+Ответ: базовое имя проекта формируется из имени каталога, в котором размещен проект, можно задать переменной PROJECT_NAME, которую можно прописать в файле .env.
+
+### Задание с ⭐ Создайте docker-compose.override.yml для reddit проекта
+
+Окончательный вариант с docker-compose.override.yml:
+```shell
+$ docker compose up
+[+] Running 6/6
+ ✔ Network back_net         Created                                                                                                                                                                         0.2s
+ ✔ Network front_net        Created                                                                                                                                                                         0.1s
+ ✔ Container src-post_db-1  Created                                                                                                                                                                         0.0s
+ ✔ Container src-post-1     Created                                                                                                                                                                         0.0s
+ ✔ Container src-comment-1  Created                                                                                                                                                                         0.0s
+ ✔ Container src-ui-1       Created                                                                                                                                                                         0.0s
+Attaching to src-comment-1, src-post-1, src-post_db-1, src-ui-1
+src-post_db-1  | 2023-11-04T12:46:00.329+0000 I CONTROL  [initandlisten] MongoDB starting : pid=1 port=27017 dbpath=/data/db 64-bit host=f28f84709433
+src-post_db-1  | 2023-11-04T12:46:00.329+0000 I CONTROL  [initandlisten] db version v3.2.21
+src-post_db-1  | 2023-11-04T12:46:00.329+0000 I CONTROL  [initandlisten] git version: 1ab1010737145ba3761318508ff65ba74dfe8155
+src-post_db-1  | 2023-11-04T12:46:00.329+0000 I CONTROL  [initandlisten] OpenSSL version: OpenSSL 1.0.1t  3 May 2016
+...
+src-ui-1       | [1] - Worker 0 (pid: 8) booted, phase: 0
+src-ui-1       | [1] - Worker 1 (pid: 12) booted, phase: 0
+src-comment-1  | * Listening on tcp://0.0.0.0:9292
+```
+Видим, что запущено 2 воркера, override сработал
 
 ## Как запустить проект:
 
