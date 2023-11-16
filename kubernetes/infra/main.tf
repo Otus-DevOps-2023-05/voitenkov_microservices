@@ -12,7 +12,7 @@ module "a1-subnet" {
   subnet_name                 = "subnet-${var.project}-${var.environment}-a1"
   subnet_network_id           = yandex_vpc_network.network-otus-devops-prod.id
   subnet_zone                 = "ru-central1-a"
-  subnet_v4_cidr_blocks       = local.cidr_local
+  subnet_v4_cidr_blocks       = [local.cidr_local]
 
   depends_on = [yandex_vpc_network.network-otus-devops-prod]
 }
@@ -139,8 +139,8 @@ module "k8s-node-group-sa" {
   sa_role          = "container-registry.images.puller"
 }
 
-module "c1-k8s-cluster-calico" {
-  source                                = "../modules/k8s-cluster"
+module "c1-k8s-cluster" {
+  source                                = "../modules/k8s-cluster-calico"
   k8s_cluster_name                      = "cluster-1"
   k8s_cluster_project                   = var.project
   k8s_cluster_environment               = var.environment
@@ -212,4 +212,11 @@ resource "yandex_dns_recordset" "r1-dns-rs-otus-devops-prod" {
   data    = ["${var.external_ip1}"]
 
   depends_on = [yandex_dns_zone.z1-dns-zone-otus-devops]
+}
+
+resource "yandex_compute_disk" "disk-otus-devops-prod-k8s" {
+  name       = "k8s"
+  type       = "network-hdd"
+  zone       = "ru-central1-a"
+  size       = 4
 }
