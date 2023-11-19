@@ -9,6 +9,7 @@
 5. [ДЗ № 16 - Введение в мониторинг. Модели и принципы работы систем мониторинга](#hw16)
 6. [ДЗ № 18 - Введение в Kubernetes #1](#hw18)
 7. [ДЗ № 19 - Основные модели безопасности и контроллеры в Kubernetes](#hw19)
+8. [ДЗ № 20 - Ingress-контроллеры и сервисы в Kubernetes](#hw20)
    
 ---
 <a name="hw12"></a>
@@ -598,6 +599,48 @@ replicaset.apps/ui-7d6fbbfc78        3         3         3       5m59s
 ### Задание с ⭐ Создайте YAML-манифесты для описания созданных сущностей для включения dashboard
 
 Манифесты для Dashbord см. [kubernetes/dashboard](kubernetes/dashboard)
+
+## Как запустить проект:
+
+## Как проверить работоспособность:
+
+---
+<a name="hw20"></a>
+# Выполнено ДЗ № 20 - Ingress-контроллеры и сервисы в Kubernetes
+
+ - [x] Основное ДЗ
+ - [x] Задание с ⭐ Опишите создаваемый объект Secret в виде Kubernetes-манифеста.    
+       
+## В процессе сделано:
+
+1. Задеплоил сущности:
+  - Ingress Controller
+  - Ingress
+  - Secret
+  - TLS
+  - LoadBalancer Service
+  - Network Policies
+  - PersistentVolumes
+  - PersistentVolumeClaims
+2. Потренировался с сетевыми политиками CALICO
+
+Запущенное через Ingress приложение:
+
+![Reddit in K8s](/images/hw20-reddit.png) 
+
+### Задание с ⭐ Опишите создаваемый объект Secret в виде Kubernetes-манифеста.    
+
+```shell
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ui-ingress
+data:
+  tls.crt: base64 encoded cert
+  tls.key: base64 encoded key
+type: kubernetes.io/tls
+```
 
 ## Как запустить проект:
 
