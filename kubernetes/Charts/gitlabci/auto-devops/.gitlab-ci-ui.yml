@@ -1,0 +1,181 @@
+image: alpine:latest
+
+stages:
+  - build
+  - test
+  - review
+  - release
+  - cleanup
+
+build:
+  stage: build
+  image: docker:git
+  services:
+    - docker:18.09.7-dind
+  script:
+    - setup_docker
+    - build
+  variables:
+    DOCKER_DRIVER: overlay2
+  only:
+   - branches
+
+test:
+  stage: test
+  script:
+    - exit 0
+  only:
+    - branches
+
+release:
+  stage: release
+  image: docker:git
+  services:
+    - docker:18.09.7-dind
+  script:
+    - setup_docker
+    - release
+  variables:
+    DOCKER_DRIVER: overlay2
+  only:
+    - main
+
+review:
+  stage: review
+  image: dtzar/helm-kubectl:3.13
+  script:
+    - kubectl config use-context $KUBE_CONTEXT
+    - install_dependencies
+    - ensure_namespace
+    - deploy
+  variables:
+    KUBE_NAMESPACE: review
+    KUBE_CONTEXT: voitenkov/reddit-deploy:yc-k8s
+    host: $CI_PROJECT_PATH_SLUG-$CI_COMMIT_REF_SLUG
+  environment:
+    name: review/$CI_PROJECT_PATH/$CI_COMMIT_REF_NAME
+    url: http://$CI_PROJECT_PATH_SLUG-$CI_COMMIT_REF_SLUG
+    on_stop: stop_review
+  except:
+    - main
+
+stop_review:
+  stage: cleanup
+  image: dtzar/helm-kubectl:3.13
+  variables:
+    GIT_STRATEGY: none
+    KUBE_NAMESPACE: review
+    KUBE_CONTEXT: voitenkov/reddit-deploy:yc-k8s
+  script:
+    - kubectl config use-context $KUBE_CONTEXT
+    - install_dependencies
+    - delete
+  environment:
+    name: review/$CI_PROJECT_PATH/$CI_COMMIT_REF_NAME
+    action: stop
+  when: manual
+  allow_failure: true
+  only:
+    - branches
+  except:
+    - main
+
+.auto_devops: &auto_devops |
+  [[ "$TRACE" ]] && set -x
+  export CI_APPLICATION_REPOSITORY=$CI_REGISTRY/$CI_PROJECT_PATH
+  export CI_APPLICATION_TAG=$CI_COMMIT_REF_SLUG
+  export CI_CONTAINER_NAME=ci_job_build_${CI_JOB_ID}
+  export GITLAB_URL="https://gitlab.reddit.voytenkov.ru/voitenkov"
+
+  function deploy() {
+    track="${1-stable}"
+    name="$CI_ENVIRONMENT_SLUG"
+
+    if [[ "$track" != "stable" ]]; then
+      name="$name-$track"
+    fi
+
+    echo "Clone deploy repository..."
+    git clone https://gitlab.reddit.voytenkov.ru/voitenkov/reddit-deploy.git
+
+    echo "Download helm dependencies..."
+    helm dep update reddit-deploy/reddit
+
+    echo "Deploy helm release $name to $KUBE_NAMESPACE"
+    helm upgrade --install \
+      --wait \
+      --atomic \
+      --set ui.ingress.host="$host" \
+      --set $CI_PROJECT_NAME.image.repository=$CI_REGISTRY_IMAGE \
+      --set $CI_PROJECT_NAME.image.tag=$CI_APPLICATION_TAG \
+      --namespace="$KUBE_NAMESPACE" \
+      --version="$CI_PIPELINE_ID-$CI_JOB_ID" \
+      "$name" \
+      reddit-deploy/reddit/
+  }
+
+  function install_dependencies() {
+
+    apk add -U openssl curl tar gzip bash ca-certificates git
+    wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub
+
+    curl https://storage.googleapis.com/pub/gsutil.tar.gz | tar -xz -C $HOME
+    export PATH=${PATH}:$HOME/gsutil
+
+    curl  -o /usr/bin/sync-repo.sh https://raw.githubusercontent.com/kubernetes/helm/master/scripts/sync-repo.sh
+    chmod a+x /usr/bin/sync-repo.sh
+
+  }
+
+
+  function setup_docker() {
+    if ! docker info &>/dev/null; then
+      if [ -z "$DOCKER_HOST" -a "$KUBERNETES_PORT" ]; then
+        export DOCKER_HOST='tcp://localhost:2375'
+      fi
+    fi
+  }
+
+  function ensure_namespace() {
+    kubectl describe namespace "$KUBE_NAMESPACE" || kubectl create namespace "$KUBE_NAMESPACE"
+  }
+
+  function release() {
+
+    echo "Updating docker images ..."
+
+    if [[ -n "$CI_REGISTRY_USER" ]]; then
+      echo "Logging to GitLab Container Registry with CI credentials..."
+      docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+      echo ""
+    fi
+
+    docker pull "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA"
+    docker tag "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" "$CI_REGISTRY_IMAGE:$(cat VERSION)"
+    docker push "$CI_REGISTRY_IMAGE:$(cat VERSION)"
+    echo ""
+  }
+
+  function build() {
+
+    if [[ -n "$CI_REGISTRY_USER" ]]; then
+      echo "Logging to GitLab Container Registry with CI credentials..."
+      docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+      echo ""
+    fi
+
+    echo "Building and pushing Dockerfile-based application..."
+    echo `git show --format="%h" HEAD | head -1` > build_info.txt
+    echo `git rev-parse --abbrev-ref HEAD` >> build_info.txt
+    docker buildx build -t $CI_REGISTRY_IMAGE:$CI_APPLICATION_TAG --push .
+    echo ""
+  }
+
+  function delete() {
+    track="${1-stable}"
+    name="$CI_ENVIRONMENT_SLUG"
+    helm delete "$name" --namespace="$KUBE_NAMESPACE" || true
+  }
+
+before_script:
+  - *auto_devops
