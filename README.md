@@ -657,8 +657,12 @@ type: kubernetes.io/tls
 ## В процессе сделано:
 
 1. Подготовил и задеплоил Helm-чарты приложения
-3. Запустил GitLab в Kubernetes (Helm Chart)
-4. Интегрировал GitLab CI с Kubernetes (GitLab Agent)
+   
+2. Запустил GitLab в Kubernetes (Helm Chart)
+![GitLab pods](/images/hw31-gitlab-pods.png)
+
+3. Интегрировал GitLab CI с Kubernetes (GitLab Agent)
+![GitLab Agent](/images/hw31-gitlab-k8s-agent.png)
 
 Helm-чарт задеплоен из пайплайна:
 ```shell
@@ -698,6 +702,25 @@ replicaset.apps/review-voitenkov-k4huzk-mongodb-8597c77cf5   1         1        
 replicaset.apps/review-voitenkov-k4huzk-post-84b7df8b67      1         1         1       79s
 replicaset.apps/review-voitenkov-k4huzk-ui-77c68d7898        3         3         3       79s
 ``` 
+
+4. Настроил пайплайн для динамических окружений
+![GitLab pipeline](/images/hw31-gitlab-pipeline.png)
+![GitLab dynamic environments](/images/hw31-gitlab-env-dyn.png)
+
+5. Настроил пайплайн для cтатических окружений
+![GitLab pipeline](/images/hw31-gitlab-env-static.png)
+
+Staging и Production приложения запущены:
+```shell
+$ helm ls -A
+NAME            NAMESPACE               REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
+gitlab          default                 1               2023-11-27 14:49:36.856534818 +0200 EET deployed        gitlab-7.6.0            v16.6.0
+production      production              1               2023-11-29 20:38:39.97173519 +0000 UTC  deployed        reddit-0.1.0
+staging         staging                 2               2023-11-29 20:35:39.543122209 +0000 UTC deployed        reddit-0.1.0
+yc-k8s          gitlab-agent-yc-k8s     1               2023-11-28 00:42:39.056428334 +0200 EET deployed        gitlab-agent-1.21.0     v16.6.0
+```
+![GitLab pipeline](/images/hw31-gitlab-pods-prod.png)
+
 
 ## Как запустить проект:
 
