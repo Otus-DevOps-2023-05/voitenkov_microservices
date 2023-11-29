@@ -1,0 +1,125 @@
+image: alpine:latest
+
+stages:
+  - test
+  - staging
+  - production
+
+.extended_deploy:
+  image: dtzar/helm-kubectl:3.13
+  variables:
+    GIT_STRATEGY: none
+    KUBE_NAMESPACE: review
+    KUBE_CONTEXT: voitenkov/reddit-deploy:yc-k8s
+    host: $CI_PROJECT_PATH_SLUG-$CI_COMMIT_REF_SLUG
+    name: $CI_ENVIRONMENT_SLUG
+    CI_APPLICATION_REPOSITORY: registry.reddit.voytenkov.ru/voitenkov
+    CI_APPLICATION_TAG: $CI_COMMIT_REF_SLUG
+    CI_CONTAINER_NAME: ci_job_build_${CI_JOB_ID}
+    GITLAB_URL: "https://gitlab.reddit.voytenkov.ru/voitenkov"
+  before_script:
+    # installing dependencies
+    - apk add -U openssl curl tar gzip bash ca-certificates git
+    - wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub
+    - curl https://storage.googleapis.com/pub/gsutil.tar.gz | tar -xz -C $HOME
+    - export PATH=${PATH}:$HOME/gsutil
+    - curl  -o /usr/bin/sync-repo.sh https://raw.githubusercontent.com/kubernetes/helm/master/scripts/sync-repo.sh
+    - chmod a+x /usr/bin/sync-repo.sh
+    # ensuring namespace
+    - kubectl config use-context $KUBE_CONTEXT
+    - kubectl describe namespace "$KUBE_NAMESPACE" || kubectl create namespace "$KUBE_NAMESPACE"
+
+test:
+  stage: test
+  script:
+    - exit 0
+  only:
+    - triggers
+    - branches
+
+staging:
+  stage: staging
+  extends: .extended_deploy
+  script:
+    - export track="${1-stable}"
+    - mkdir -p reddit/chats
+    - helm dep build reddit
+    - echo "Deploy helm release $name to $KUBE_NAMESPACE"
+    - >
+      helm template \
+        --set ui.ingress.host="$host" \
+        --set ui.image.repository=$CI_APPLICATION_REPOSITORY/ui \
+        --set ui.image.tag="$(curl https://gitlab.reddit.voytenkov.ru/voitenkov/ui/raw/main/VERSION)" \
+        --set post.image.repository=$CI_APPLICATION_REPOSITORY/post \
+        --set post.image.tag="$(curl https://gitlab.reddit.voytenkov.ru/voitenkov/post/raw/main/VERSION)" \
+        --set comment.image.repository=$CI_APPLICATION_REPOSITORY/comment \
+        --set comment.image.tag="$(curl https://gitlab.reddit.voytenkov.ru/voitenkov/comment/raw/main/VERSION)" \
+        --namespace="$KUBE_NAMESPACE" --create-namespace \
+        --version="$CI_PIPELINE_ID-$CI_JOB_ID" \
+        "$name" \
+        reddit/
+    - >
+      helm upgrade --install --wait --atomic \
+        --set ui.ingress.host="$host" \
+        --set ui.image.repository=$CI_APPLICATION_REPOSITORY/ui \
+        --set ui.image.tag="$(curl https://gitlab.reddit.voytenkov.ru/voitenkov/ui/raw/main/VERSION)" \
+        --set post.image.repository=$CI_APPLICATION_REPOSITORY/post \
+        --set post.image.tag="$(curl https://gitlab.reddit.voytenkov.ru/voitenkov/post/raw/main/VERSION)" \
+        --set comment.image.repository=$CI_APPLICATION_REPOSITORY/comment \
+        --set comment.image.tag="$(curl https://gitlab.reddit.voytenkov.ru/voitenkov/comment/raw/main/VERSION)" \
+        --namespace="$KUBE_NAMESPACE" --create-namespace \
+        --version="$CI_PIPELINE_ID-$CI_JOB_ID" \
+        "$name" \
+        reddit/
+  environment:
+    name: staging
+    url: http://staging
+  only:
+    refs:
+      - main
+  except:
+    - triggers
+
+production:
+  stage: production
+  extends: .extended_deploy
+  script:
+    - export track="${1-stable}"
+    - mkdir -p reddit/chats
+    - helm dep build reddit
+    - echo "Deploy helm release $name to $KUBE_NAMESPACE"
+    - >
+      helm template \
+        --set ui.ingress.host="$host" \
+        --set ui.image.repository=$CI_APPLICATION_REPOSITORY/ui \
+        --set ui.image.tag="$(curl https://gitlab.reddit.voytenkov.ru/voitenkov/ui/raw/main/VERSION)" \
+        --set post.image.repository=$CI_APPLICATION_REPOSITORY/post \
+        --set post.image.tag="$(curl https://gitlab.reddit.voytenkov.ru/voitenkov/post/raw/main/VERSION)" \
+        --set comment.image.repository=$CI_APPLICATION_REPOSITORY/comment \
+        --set comment.image.tag="$(curl https://gitlab.reddit.voytenkov.ru/voitenkov/comment/raw/main/VERSION)" \
+        --namespace="$KUBE_NAMESPACE" --create-namespace \
+        --version="$CI_PIPELINE_ID-$CI_JOB_ID" \
+        "$name" \
+        reddit/
+    - >
+      helm upgrade --install --wait --atomic \
+        --set ui.ingress.host="$host" \
+        --set ui.image.repository=$CI_APPLICATION_REPOSITORY/ui \
+        --set ui.image.tag="$(curl https://gitlab.reddit.voytenkov.ru/voitenkov/ui/raw/main/VERSION)" \
+        --set post.image.repository=$CI_APPLICATION_REPOSITORY/post \
+        --set post.image.tag="$(curl https://gitlab.reddit.voytenkov.ru/voitenkov/post/raw/main/VERSION)" \
+        --set comment.image.repository=$CI_APPLICATION_REPOSITORY/comment \
+        --set comment.image.tag="$(curl https://gitlab.reddit.voytenkov.ru/voitenkov/comment/raw/main/VERSION)" \
+        --namespace="$KUBE_NAMESPACE" --create-namespace \
+        --version="$CI_PIPELINE_ID-$CI_JOB_ID" \
+        "$name" \
+        reddit/
+  environment:
+    name: production
+    url: http://production
+  when: manual
+  only:
+    refs:
+      - main
+  except:
+    - triggers

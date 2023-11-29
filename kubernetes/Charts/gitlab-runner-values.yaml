@@ -1,0 +1,12 @@
+# gitlabUrl: https://gitlab.reddit.voytenkov.ru
+# runnerToken: "glrt-_6P_DRxkFCxbo5BsFUKV"
+concurrent: 10
+rbac:
+  create: true
+runners:
+  config: |
+      [[runners]]
+        executor = "kubernetes"
+        [runners.kubernetes]
+        image = "ubuntu:20.04"
+        privileged = true
