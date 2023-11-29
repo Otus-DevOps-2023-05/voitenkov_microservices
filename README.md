@@ -648,7 +648,7 @@ type: kubernetes.io/tls
 ## Как проверить работоспособность:
 
 ---
-<a name="hw20"></a>
+<a name="hw21"></a>
 # Выполнено ДЗ № 21 - Интеграция Kubernetes в GitlabCI
 
  - [x] Основное ДЗ
