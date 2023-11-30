@@ -1,82 +1,29 @@
-def flash_danger(message)
-  session[:flashes] << { type: 'alert-danger', message: message }
-end
-
-def flash_success(message)
-  session[:flashes] << { type: 'alert-success', message: message }
-end
-
-def log_event(type, name, message, params = '{}')
-  case type
-  when 'error'
-    logger.error('service=ui | ' \
-                 "event=#{name} | " \
-                 "request_id=#{request.env['REQUEST_ID']} | " \
-                 "message=\'#{message}\' | " \
-                 "params: #{params.to_json}")
-  when 'info'
-    logger.info('service=ui | ' \
-                "event=#{name} | " \
-                "request_id=#{request.env['REQUEST_ID']} | " \
-                "message=\'#{message}\' | " \
-                "params: #{params.to_json}")
-  when 'warning'
-    logger.warn('service=ui | ' \
-                "event=#{name} | " \
-                "request_id=#{request.env['REQUEST_ID']} | " \
-                "message=\'#{message}\' |  " \
-                "params: #{params.to_json}")
-  end
-end
-
-def http_request(method, url, params = {})
-  unless defined?(request).nil?
-    settings.http_client.headers[:request_id] = request.env['REQUEST_ID'].to_s
+helpers do
+  # a helper method to turn a string ID
+  # representation into a BSON::ObjectId
+  def object_id val
+    begin
+      BSON::ObjectId.from_string(val)
+    rescue BSON::ObjectId::Invalid
+      nil
+    end
   end
 
-  case method
-  when 'get'
-    response = settings.http_client.get url
-    JSON.parse(response.body)
-  when 'post'
-    settings.http_client.post url, params
+  def document_by_id id
+    id = object_id(id) if String === id
+    if id.nil?
+      {}.to_json
+    else
+      document = settings.mongo_db.find(:_id => id).to_a.first
+      (document || {}).to_json
+    end
   end
-end
 
-def http_healthcheck_handler(post_url, comment_url, version)
-  post_status = check_service_health(post_url)
-  comment_status = check_service_health(comment_url)
-
-  status = if comment_status == 1 && post_status == 1
-             1
-           else
-             0
-           end
-
-  healthcheck = { status: status,
-                  dependent_services: {
-                    comment: comment_status,
-                    post:    post_status
-                  },
-                  version: version }
-  healthcheck.to_json
-end
-
-def check_service_health(url)
-  name = http_request('get', "#{url}/healthcheck")
-rescue StandardError
-  0
-else
-  name['status']
-end
-
-def set_health_gauge(metric, value)
-  metric.set(
-    {
-      version: VERSION,
-      commit_hash: BUILD_INFO[0].strip,
-      branch: BUILD_INFO[1].strip
-    },
-    value
-  )
+  def logged_in?
+      if session[:username].nil?
+          return false
+      else
+          return true
+      end
+  end
 end
