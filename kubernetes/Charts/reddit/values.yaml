@@ -1,0 +1,25 @@
+comment:
+  image:
+    repository: voitenkov/comment
+    tag: latest
+  service:
+    externalPort: 9292
+    internalPort: 9292
+  databaseHost: mongodb
+
+post:
+  image:
+    repository: voitenkov/post
+    tag: latest
+  service:
+    externalPort: 5000
+    internalPort: 5000
+  databaseHost: mongodb
+
+ui:
+  image:
+    repository: voitenkov/ui
+    tag: latest
+  service:
+    externalPort: 80
+    internalPort: 9292

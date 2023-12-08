@@ -1,8 +1,0 @@
-{
-    "service_account_key_file": "./.secrets/key.json",
-    "folder_id": "b1g6gdahohoa366go44m",
-    "source_image_id": "fd84kolpdaqobtlpkfpc",
-    "source_image_family": "ubuntu-1804-lts",
-    "app_name": "reddit",
-    "ssh_username": "ubuntu"
-  }

@@ -1,0 +1,123 @@
+image: alpine:latest
+
+stages:
+  - test
+  - staging
+  - production
+
+test:
+  stage: test
+  script:
+    - exit 0
+  only:
+    - triggers
+    - branches
+
+staging:
+  stage: staging
+  image: dtzar/helm-kubectl:3.13
+  script:
+  - kubectl config use-context $KUBE_CONTEXT
+  - install_dependencies
+  - ensure_namespace
+  - deploy
+  variables:
+    KUBE_NAMESPACE: staging
+    KUBE_CONTEXT: voitenkov/reddit-deploy:yc-k8s
+    host: $CI_PROJECT_PATH_SLUG-$CI_COMMIT_REF_SLUG
+  environment:
+    name: staging
+    url: http://staging
+  only:
+    refs:
+      - main
+  except:
+    - triggers
+
+production:
+  stage: production
+  image: dtzar/helm-kubectl:3.13
+  script:
+  - kubectl config use-context $KUBE_CONTEXT
+  - install_dependencies
+  - ensure_namespace
+  - deploy
+  variables:
+    KUBE_NAMESPACE: production
+    KUBE_CONTEXT: voitenkov/reddit-deploy:yc-k8s
+    host: $CI_PROJECT_PATH_SLUG-$CI_COMMIT_REF_SLUG
+  environment:
+    name: production
+    url: http://production
+  when: manual
+  only:
+    refs:
+      - main
+  except:
+    - triggers
+
+.auto_devops: &auto_devops |
+  [[ "$TRACE" ]] && set -x
+  export CI_APPLICATION_REPOSITORY="registry.reddit.voytenkov.ru/voitenkov"
+  export CI_APPLICATION_TAG=$CI_COMMIT_REF_SLUG
+  export CI_CONTAINER_NAME=ci_job_build_${CI_JOB_ID}
+  export GITLAB_URL="https://gitlab.reddit.voytenkov.ru/voitenkov"
+
+  function deploy() {
+    track="${1-stable}"
+    name="$CI_ENVIRONMENT_SLUG"
+    mkdir -p reddit/chats
+    helm dep build reddit
+
+    # for microservice in $(helm dep ls | grep "file://" | awk '{print $1}') ; do
+    #   SET_VERSION="$SET_VERSION \ --set $microservice.image.tag='$(curl http://gitlab-gitlab/$CI_PROJECT_NAMESPACE/ui/raw/master/VERSION)' "
+
+    echo "Deploy helm release $name to $KUBE_NAMESPACE"
+
+    helm template \
+      --set ui.ingress.host="$host" \
+      --set ui.image.repository=$CI_APPLICATION_REPOSITORY/ui \
+      --set ui.image.tag="$(curl https://gitlab.reddit.voytenkov.ru/voitenkov/ui/raw/main/VERSION)" \
+      --set post.image.repository=$CI_APPLICATION_REPOSITORY/post \
+      --set post.image.tag="$(curl https://gitlab.reddit.voytenkov.ru/voitenkov/post/raw/main/VERSION)" \
+      --set comment.image.repository=$CI_APPLICATION_REPOSITORY/comment \
+      --set comment.image.tag="$(curl https://gitlab.reddit.voytenkov.ru/voitenkov/comment/raw/main/VERSION)" \
+      --namespace="$KUBE_NAMESPACE" --create-namespace \
+      --version="$CI_PIPELINE_ID-$CI_JOB_ID" \
+      "$name" \
+      reddit/
+
+    helm upgrade --install --wait --atomic \
+      --set ui.ingress.host="$host" \
+      --set ui.image.repository=$CI_APPLICATION_REPOSITORY/ui \
+      --set ui.image.tag="$(curl https://gitlab.reddit.voytenkov.ru/voitenkov/ui/raw/main/VERSION)" \
+      --set post.image.repository=$CI_APPLICATION_REPOSITORY/post \
+      --set post.image.tag="$(curl https://gitlab.reddit.voytenkov.ru/voitenkov/post/raw/main/VERSION)" \
+      --set comment.image.repository=$CI_APPLICATION_REPOSITORY/comment \
+      --set comment.image.tag="$(curl https://gitlab.reddit.voytenkov.ru/voitenkov/comment/raw/main/VERSION)" \
+      --namespace="$KUBE_NAMESPACE" --create-namespace \
+      --version="$CI_PIPELINE_ID-$CI_JOB_ID" \
+      "$name" \
+      reddit/
+
+  }
+
+  function install_dependencies() {
+
+    apk add -U openssl curl tar gzip bash ca-certificates git
+    wget -q -O /etc/apk/keys/sgerrand.rsa.pub https://alpine-pkgs.sgerrand.com/sgerrand.rsa.pub
+
+    curl https://storage.googleapis.com/pub/gsutil.tar.gz | tar -xz -C $HOME
+    export PATH=${PATH}:$HOME/gsutil
+
+    curl  -o /usr/bin/sync-repo.sh https://raw.githubusercontent.com/kubernetes/helm/master/scripts/sync-repo.sh
+    chmod a+x /usr/bin/sync-repo.sh
+
+  }
+
+  function ensure_namespace() {
+    kubectl describe namespace "$KUBE_NAMESPACE" || kubectl create namespace "$KUBE_NAMESPACE"
+  }
+
+before_script:
+  - *auto_devops

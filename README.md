@@ -10,6 +10,7 @@
 6. [ДЗ № 18 - Введение в Kubernetes #1](#hw18)
 7. [ДЗ № 19 - Основные модели безопасности и контроллеры в Kubernetes](#hw19)
 8. [ДЗ № 20 - Ingress-контроллеры и сервисы в Kubernetes](#hw20)
+9. [ДЗ № 21 - Интеграция Kubernetes в GitlabCI](#hw21)
    
 ---
 <a name="hw12"></a>
@@ -645,6 +646,90 @@ type: kubernetes.io/tls
 ## Как запустить проект:
 
 ## Как проверить работоспособность:
+
+---
+<a name="hw21"></a>
+# Выполнено ДЗ № 21 - Интеграция Kubernetes в GitlabCI
+
+ - [x] Основное ДЗ
+ - [x] Задание с ⭐ Свяжите пайплайны сборки образов и пайплайн деплоя на staging и production так, чтобы после релиза образа из ветки мастер запускался деплой уже новой версии приложения на production
+               
+## В процессе сделано:
+
+1. Подготовил и задеплоил Helm-чарты приложения
+   
+2. Запустил GitLab в Kubernetes (Helm Chart)
+![GitLab pods](/images/hw31-gitlab-pods.png)
+
+3. Интегрировал GitLab CI с Kubernetes (GitLab Agent)
+![GitLab Agent](/images/hw31-gitlab-k8s-agent.png)
+
+Helm-чарт задеплоен из пайплайна:
+```shell
+$ helm ls -A
+NAME                    NAMESPACE               REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
+gitlab                  default                 1               2023-11-27 14:49:36.856534818 +0200 EET deployed        gitlab-7.6.0            v16.6.0
+review-voitenkov-k4huzk review                  1               2023-11-28 22:41:07.468403722 +0000 UTC deployed        reddit-0.1.0
+yc-k8s                  gitlab-agent-yc-k8s     1               2023-11-28 00:42:39.056428334 +0200 EET deployed        gitlab-agent-1.21.0     v16.6.0
+```
+
+Приложение работает:
+```shell
+$ k get all -n review
+NAME                                                   READY   STATUS    RESTARTS   AGE
+pod/review-voitenkov-k4huzk-comment-6c59bb66cf-2d89s   1/1     Running   0          78s
+pod/review-voitenkov-k4huzk-mongodb-8597c77cf5-hl96h   1/1     Running   0          78s
+pod/review-voitenkov-k4huzk-post-84b7df8b67-zwq4j      1/1     Running   0          78s
+pod/review-voitenkov-k4huzk-ui-77c68d7898-672ps        1/1     Running   0          78s
+pod/review-voitenkov-k4huzk-ui-77c68d7898-w25lg        1/1     Running   0          78s
+pod/review-voitenkov-k4huzk-ui-77c68d7898-xbj72        1/1     Running   0          78s
+
+NAME                                      TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)        AGE
+service/mongodb                           ClusterIP   10.112.187.88   <none>        27017/TCP      79s
+service/review-voitenkov-k4huzk-comment   ClusterIP   10.112.132.27   <none>        9292/TCP       79s
+service/review-voitenkov-k4huzk-post      ClusterIP   10.112.170.77   <none>        5000/TCP       79s
+service/ui                                NodePort    10.112.177.3    <none>        80:32092/TCP   79s
+
+NAME                                              READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/review-voitenkov-k4huzk-comment   1/1     1            1           79s
+deployment.apps/review-voitenkov-k4huzk-mongodb   1/1     1            1           79s
+deployment.apps/review-voitenkov-k4huzk-post      1/1     1            1           79s
+deployment.apps/review-voitenkov-k4huzk-ui        3/3     3            3           79s
+
+NAME                                                         DESIRED   CURRENT   READY   AGE
+replicaset.apps/review-voitenkov-k4huzk-comment-6c59bb66cf   1         1         1       79s
+replicaset.apps/review-voitenkov-k4huzk-mongodb-8597c77cf5   1         1         1       79s
+replicaset.apps/review-voitenkov-k4huzk-post-84b7df8b67      1         1         1       79s
+replicaset.apps/review-voitenkov-k4huzk-ui-77c68d7898        3         3         3       79s
+``` 
+
+4. Настроил пайплайн для динамических окружений
+![GitLab pipeline](/images/hw31-gitlab-pipeline.png)
+![GitLab dynamic environments](/images/hw31-gitlab-env-dyn.png)
+
+5. Настроил пайплайн для cтатических окружений
+![GitLab pipeline](/images/hw31-gitlab-env-static.png)
+
+Staging и Production приложения запущены:
+```shell
+$ helm ls -A
+NAME            NAMESPACE               REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
+gitlab          default                 1               2023-11-27 14:49:36.856534818 +0200 EET deployed        gitlab-7.6.0            v16.6.0
+production      production              1               2023-11-29 20:38:39.97173519 +0000 UTC  deployed        reddit-0.1.0
+staging         staging                 2               2023-11-29 20:35:39.543122209 +0000 UTC deployed        reddit-0.1.0
+yc-k8s          gitlab-agent-yc-k8s     1               2023-11-28 00:42:39.056428334 +0200 EET deployed        gitlab-agent-1.21.0     v16.6.0
+```
+![GitLab pipeline](/images/hw31-gitlab-pods-prod.png)
+
+6. Изучил auto-devops стиль пайплайнов, перевел их в "пайплайн здорового человека". Если скрипты огромные, то auto-devops будет лучше имхо.
+
+### Задание с ⭐ Свяжите пайплайны сборки образов и пайплайн деплоя на staging и production так, чтобы после релиза образа из ветки мастер запускался деплой уже новой версии приложения на production
+см. [kubernetes/Charts/gitlabci/.gitlab-ci-auto-deploy-to-prod.yml](kubernetes/Charts/gitlabci/.gitlab-ci-auto-deploy-to-prod.yml)
+
+## Как запустить проект:
+
+## Как проверить работоспособность:
+
 
 ## PR checklist:
  - [x] Выставлен label с темой домашнего задания

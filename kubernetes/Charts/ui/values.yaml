@@ -1,0 +1,16 @@
+---
+service:
+  internalPort: 9292
+  externalPort: 80
+
+image:
+  repository: voitenkov/ui
+  tag: latest
+
+ingress:
+  host: ui.reddit.voytenkov.ru
+
+postHost:
+postPort:
+commentHost:
+commentPort:

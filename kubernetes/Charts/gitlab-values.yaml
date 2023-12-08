@@ -1,0 +1,23 @@
+global:
+  hosts:
+    domain: reddit.voytenkov.ru
+certmanager-issuer:
+  email: admin@reddit.voytenkov.ru
+gitlab-runner:
+  runners:
+    config: |
+      [[runners]]
+        [runners.kubernetes]
+        image = "ubuntu:22.04"
+        privileged = true
+        {{- if .Values.global.minio.enabled }}
+        [runners.cache]
+          Type = "s3"
+          Path = "gitlab-runner"
+          Shared = true
+          [runners.cache.s3]
+            ServerAddress = {{ include "gitlab-runner.cache-tpl.s3ServerAddress" . }}
+            BucketName = "runner-cache"
+            BucketLocation = "us-east-1"
+            Insecure = false
+        {{ end }}
